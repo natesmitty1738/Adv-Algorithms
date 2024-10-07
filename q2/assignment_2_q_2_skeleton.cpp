@@ -1,62 +1,107 @@
+// CSCI 411 - Fall 2024
+// Assignment 2 Question 2 - Outpost
+// Author: Carter Tillquist
+// Feel free to use all, part, or none of this code for the outpost problem on assignment 2.
+
 #include <iostream>
+#include <memory>
 #include <vector>
-#include <algorithm>
-#include <cmath>
+#include <set>
+#include <math.h>
+#include <queue>
 
-using namespace std;
-
-struct Point {
-    int x, y, z;
+// Struct to represent an Outpost
+struct Outpost
+{
+  int id;  // Unique identifier for the outpost
+  float x; // X-coordinate of the outpost
+  float y; // Y-coordinate of the outpost
+  float s; // Signal strength of the outpost's transmitter
 };
 
-int gcd(int a, int b) {
-    if (b == 0) return abs(a);
-    return gcd(b, a % b);
-}
+// Function to find the maximum number of outposts that can be contacted
+int maxContacts(std::vector<Outpost> &outposts, std::vector<std::vector<float>> &distances)
+{
+  int maxContacted = 0;
+  int n = outposts.size();
 
-int maxPointsOnLine(vector<Point>& points) {
-    int n = points.size();
-    if (n <= 2) return n;
+  // Try starting from each outpost
+  for (int start = 0; start < n; start++)
+  {
+    std::vector<bool> visited(n, false);
+    std::queue<int> q;
+    int contacted = 0;
 
-    int maxPoints = 2;
+    // Start BFS from the current outpost
+    q.push(start);
+    visited[start] = true;
 
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            int dx = points[j].x - points[i].x;
-            int dy = points[j].y - points[i].y;
-            int dz = points[j].z - points[i].z;
+    // BFS
+    while (!q.empty())
+    {
+      int current = q.front();
+      q.pop();
+      contacted++;
 
-            int g = gcd(gcd(dx, dy), dz);
-            dx /= g; dy /= g; dz /= g;
-
-            int count = 0;
-            for (int k = 0; k < n; k++) {
-                int dx2 = points[k].x - points[i].x;
-                int dy2 = points[k].y - points[i].y;
-                int dz2 = points[k].z - points[i].z;
-
-                if (dx2 * dy == dy2 * dx && dy2 * dz == dz2 * dy && dx2 * dz == dz2 * dx) {
-                    count++;
-                }
-            }
-            maxPoints = max(maxPoints, count);
+      // check all neighbors
+      for (int neighbor = 0; neighbor < n; neighbor++)
+      {
+        // If the neighbor is not visited and within signal range
+        if (!visited[neighbor] && distances[current][neighbor] <= outposts[current].s)
+        {
+          visited[neighbor] = true;
+          q.push(neighbor);
         }
+      }
     }
 
-    return maxPoints;
+    // update max number of contacted outposts
+    maxContacted = std::max(maxContacted, contacted);
+  }
+
+  return maxContacted;
 }
 
-int main() {
-    int n;
-    cin >> n;
+// calculate distance between two outposts
+float distance(Outpost a, Outpost b)
+{
+  return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
+}
 
-    vector<Point> points(n);
-    for (int i = 0; i < n; i++) {
-        cin >> points[i].x >> points[i].y >> points[i].z;
+int main()
+{
+  // Read the total number of outposts
+  int n = -1;
+  std::cin >> n;
+
+  // Read outpost information
+  std::vector<Outpost> outposts;
+  float x = 0, y = 0, s = 0;
+  for (int i = 0; i < n; i++)
+  {
+    std::cin >> x >> y >> s;
+    Outpost o;
+    o.id = i;
+    o.x = x;
+    o.y = y;
+    o.s = s;
+    outposts.push_back(o);
+  }
+
+  // Calculate pairwise distances between outposts
+  std::vector<std::vector<float>> distances(outposts.size(), std::vector<float>(outposts.size(), 0));
+  for (int i = 0; i < outposts.size(); i++)
+  {
+    for (int j = i + 1; j < outposts.size(); j++)
+    {
+      float dist = distance(outposts[i], outposts[j]);
+      distances[i][j] = dist;
+      distances[j][i] = dist;
     }
+  }
 
-    int maxCollinearPoints = maxPointsOnLine(points);
-    cout << n - maxCollinearPoints << endl;
+  // Calculate and output the maximum number of contactable outposts
+  std::cout << maxContacts(outposts, distances) << std::endl;
 
-    return 0;
+  return 0;
 }

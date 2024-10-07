@@ -18,11 +18,12 @@ using namespace std;
  * inSetI - bool - true if the node is a member of the set I and false otherwise *
  * visited - bool - whether or not this node has been visited                 *
  * ****************************************************************************/
-struct Node {
-    int id;
-    int distance;
-    bool inSetI;
-    bool visited;
+struct Node
+{
+  int id;
+  int distance;
+  bool inSetI;
+  bool visited;
 };
 
 /**************************************************************************
@@ -31,10 +32,11 @@ struct Node {
  * destination - shared_ptr<Node> - the node where this edge ends         *
  * weight - int - the weight of this edge                                 *
  * ************************************************************************/
-struct Edge {
-    shared_ptr<Node> source; //to
-    shared_ptr<Node> destination; //from
-    int weight;
+struct Edge
+{
+  shared_ptr<Node> source;      // from
+  shared_ptr<Node> destination; // to
+  int weight;
 };
 
 /****************************************************************************************************************************
@@ -43,72 +45,124 @@ struct Edge {
  * adjacencyList - vector<vector<shared_ptr<Edge>>> - an adjacency list representation of a graph where each element is a weighted edge *
  * return - vector<int> - the integer ids of nodes in the set I                                                             *
  * **************************************************************************************************************************/
-vector<int> findSetI(vector<vector<shared_ptr<Edge>>> adjacencyList){
+vector<int> findSetI(vector<vector<shared_ptr<Edge>>> adjacencyList)
+{
   int numNodes = adjacencyList[0].size() - 1;
   adjacencyList[0][1]->source->distance = 0;
-  // this is hurting my brain
-  bool relaxedEdge = true;
+  vector<int> inSetI;
 
-  for (int i = 1; i < numNodes; i++) {
-    for (int j = 0; j < adjacencyList[i].size(); j++) {
-      int distFrom = adjacencyList[i][j]->source->distance;
-      int distTo = adjacencyList[i][j]->destination->distance;
-      int weight = adjacencyList[i][j]->weight;
-      cout << "f" << distFrom << "t"<< distTo << "w" << weight << endl;
-      if( distFrom + weight < distTo ) {
-        distTo = distFrom + weight; //set new best path
-        cout << "t" << distTo << endl;
+  // Bellman-Ford algorithm (V-1 iterations)
+  for (int reps = 0; reps < numNodes - 1; reps++)
+  {
+    for (int i = 1; i <= numNodes; i++)
+    {
+      for (int j = 0; j < adjacencyList[i].size(); j++)
+      {
+        shared_ptr<Edge> edge = adjacencyList[i][j];
+        if (edge->source->distance != INT_MAX &&
+            edge->source->distance + edge->weight < edge->destination->distance)
+        {
+          edge->destination->distance = edge->source->distance + edge->weight;
+        }
       }
     }
   }
-  cout << "done" << endl;
+
+  // Helper function for DFS
+  function<void(shared_ptr<Node>)> dfs = [&](shared_ptr<Node> node)
+  {
+    // node->inSetI = true;
+    node->visited = true;
+    for (const auto &edge : adjacencyList[node->id])
+    {
+      if (!edge->destination->visited)
+      {
+        dfs(edge->destination);
+      }
+    }
+  };
+
+  // Detect negative cycles and run DFS
+  for (int i = 1; i <= numNodes; i++)
+  {
+    for (int j = 0; j < adjacencyList[i].size(); j++)
+    {
+      shared_ptr<Edge> edge = adjacencyList[i][j];
+      if (edge->source->distance != INT_MAX &&
+          edge->source->distance + edge->weight < edge->destination->distance)
+      {
+        if (!edge->source->visited)
+        {
+          dfs(edge->source);
+        }
+      }
+    }
+  }
+
+  // Collect nodes in set I
+  for (int i = 1; i < adjacencyList[0].size(); i++)
+  {
+    if (adjacencyList[0][i]->source->inSetI)
+    {
+      inSetI.push_back(adjacencyList[0][i]->source->id);
+    }
+  }
+
+  return inSetI;
 }
 
-int main(){  
-    //get the number of nodes and number of edges from cin separated by a space
-    int numNodes = -1, numEdges = -1;
-    cin >> numNodes >> numEdges;
+int main()
+{
+  // get the number of nodes and number of edges from cin separated by a space
+  int numNodes = -1, numEdges = -1;
+  cin >> numNodes >> numEdges;
 
-    //add the nodes to an adjacency list
-    //in this case, adjacencyList[i] is a vector of all edges leaving adjacencyList[i]
-    //note that adjacencyList[0] is a list of self loops representing all nodes in the graph
-    //these are not actual edges in the graph, just a way to keep track of all nodes
-    //Furthermore, adjacencyList[0][0] is a dummy edge with a dummy node
-    //this means that adjacencyList[0][i] represents the node with id i where ids start at 1
-    vector<vector<shared_ptr<Edge>>> adjacencyList(numNodes+1);
-    adjacencyList[0].push_back(shared_ptr<Edge>(new Edge()));
-    for (int i=1; i<numNodes+1; i++){
-        shared_ptr<Node> node = shared_ptr<Node>(new Node());
-        node->id = i;
-        node->distance = INT_MAX;
-        node->inSetI = false;
-        node->visited = false;
-        shared_ptr<Edge> edge = shared_ptr<Edge>(new Edge());
-        edge->source = node;
-        edge->destination = node;
-        edge->weight = 0;
-        adjacencyList[0].push_back(edge);
-    }
+  // add the nodes to an adjacency list
+  // in this case, adjacencyList[i] is a vector of all edges leaving adjacencyList[i]
+  // note that adjacencyList[0] is a list of self loops representing all nodes in the graph
+  // these are not actual edges in the graph, just a way to keep track of all nodes
+  // Furthermore, adjacencyList[0][0] is a dummy edge with a dummy node
+  // this means that adjacencyList[0][i] represents the node with id i where ids start at 1
+  vector<vector<shared_ptr<Edge>>> adjacencyList(numNodes + 1);
+  adjacencyList[0].push_back(shared_ptr<Edge>(new Edge()));
+  for (int i = 1; i < numNodes + 1; i++)
+  {
+    shared_ptr<Node> node = shared_ptr<Node>(new Node());
+    node->id = i;
+    node->distance = INT_MAX;
+    node->inSetI = false;
+    node->visited = false;
+    shared_ptr<Edge> edge = shared_ptr<Edge>(new Edge());
+    edge->source = node;
+    edge->destination = node;
+    edge->weight = 0;
+    adjacencyList[0].push_back(edge);
+  }
 
-    //get edges from cin and add them to the adjacency list
-    //the start, end, and weight of a single edge are on the same line separated by spaces
-    int startNode = -1, endNode = -1, edgeWeight = -1;
-    for (int i=0; i<numEdges; i++){
-        cin >> startNode >> endNode >> edgeWeight;
-        shared_ptr<Edge> edge = shared_ptr<Edge>(new Edge());
-        edge->source = adjacencyList[0][startNode]->source;
-        edge->destination = adjacencyList[0][endNode]->destination;
-        edge->weight = edgeWeight;
-        adjacencyList[startNode].push_back(edge);
-    }
+  // get edges from cin and add them to the adjacency list
+  // the start, end, and weight of a single edge are on the same line separated by spaces
+  int startNode = -1, endNode = -1, edgeWeight = -1;
+  for (int i = 0; i < numEdges; i++)
+  {
+    cin >> startNode >> endNode >> edgeWeight;
+    shared_ptr<Edge> edge = shared_ptr<Edge>(new Edge());
+    edge->source = adjacencyList[0][startNode]->source;
+    edge->destination = adjacencyList[0][endNode]->destination;
+    edge->weight = edgeWeight;
+    adjacencyList[startNode].push_back(edge);
+  }
 
-    //find nodes belonging to the set I and print them out in ascending order
-    vector<int> setI = findSetI(adjacencyList);
-    sort(setI.begin(), setI.end());
-    for (int i=0; i<(int)setI.size()-1; i++){
-        cout << setI[i] << " ";
-    }
-    if (setI.size() > 1){ cout << setI[setI.size()-1] << endl; }
+  // find nodes belonging to the set I and print them out in ascending order
+  vector<int> setI = findSetI(adjacencyList);
+  sort(setI.begin(), setI.end());
+  for (int i = 0; i < (int)setI.size() - 1; i++)
+  {
+    cout << setI[i] << " ";
+  }
+  if (setI.size() > 1)
+  {
+    cout << setI[setI.size() - 1] << endl;
+  }
 
-    return 0;
+  return 0;
 }
